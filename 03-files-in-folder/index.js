@@ -12,10 +12,10 @@ fs.readdir(pathToFolder, {withFileTypes: true}, (err, files) => {
       fs.stat(filePath, (err, stats) => {
         if (err) return;
         console.log(path.basename(filePath, path.extname(filePath))  + ' - ' + path.extname(filePath).slice(1) + ' - ' + stats.size + 'b');
-      })
+      });
     } else {
       return;
     }
-  })
+  });
 });
 
