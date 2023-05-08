@@ -33,13 +33,18 @@ fs.mkdir(path.join(__dirname, 'project-dist', 'assets'), { recursive: true, forc
 const targetFolder = path.join(__dirname, 'project-dist', 'assets');
 
 const copyDir = (pathToAssets, targetFolder) => {
-  console.log('start copyDir');
   fs.readdir(pathToAssets, {withFileTypes: true}, (err, files) => {
     if (err) return;
     files.forEach(file => {
       const sourcePath = path.join(pathToAssets, file.name);
       const targetPath = path.join(targetFolder, file.name);
-      if (file.isFile()) {
+      if (file.isDirectory()) {
+        fs.mkdir(path.join(targetFolder, file.name), { recursive: true, force: true, }, (err) => {
+          if (err) console.log('ERROR');
+        });
+        copyDir(sourcePath, targetPath);
+
+      } else if (file.isFile()) {
         fs.copyFile(path.join(pathToAssets, file.name), path.join(targetFolder, file.name), COPYFILE_EXCL, (err)=> {
           if (err) {
             console.log(`File ${file.name} already exists`);
@@ -47,18 +52,51 @@ const copyDir = (pathToAssets, targetFolder) => {
             console.log(`File ${file.name} copied`);
           }
         });
-      } else if (file.isDirectory()) {
-        fs.mkdir(path.join(targetFolder, file.name), { recursive: true, force: true, }, (err) => {
-          if (err) return;
-        });
-        console.log(file.name);
-        copyDir(sourcePath, targetPath);
       }
     });
   });
 };
 
 copyDir(pathToAssets, targetFolder);
+
+//replacement of sample tags in html
+let indexContent = '';
+fs.rm(path.join(__dirname, 'project-dist', 'index.html'), () => {});
+
+const readableStream = fs.createReadStream(path.join(__dirname, 'template.html'), 'utf-8');
+const matches = [];
+
+readableStream.on('data', (data) => {
+  let str = data;
+  const regex = /{{(.*?)}}/g;
+  let match;
+  while ((match = regex.exec(str))) {
+    matches.push(match[1]);
+  }
+
+  if (matches.length > 0) {
+    fs.readdir(path.join(__dirname, 'components'), {withFileTypes: true}, (err, files) => {
+      if (err) console.log('error');
+      indexContent = str;
+      files.forEach((file, index) => {
+        const point = /[^\w\s]/g;
+        const fileName = file.name.slice(0, file.name.search(point));
+        if (matches.includes(fileName)) {
+
+          const stream = fs.createReadStream(path.join(__dirname, 'components', file.name), 'utf-8');
+          stream.on('data', (data) => {
+            indexContent = indexContent.replace(`{{${fileName}}}`, data);
+            if (index >= files.length-1) {
+              fs.appendFile(path.join(__dirname, 'project-dist', 'index.html'), indexContent, (err) => {
+                if (err) console.log('error');
+              });
+            }
+          });
+        }
+      });
+    });
+  }
+});
 
 //creation of styles .css
 
@@ -90,49 +128,4 @@ fs.readdir(stylesPath, {withFileTypes: true}, (err, files) => {
       }
     });
   });
-});
-
-//replacement of sample tags in html
-let indexContent = '';
-fs.rm(path.join(__dirname, 'project-dist', 'index.html'), () => {});
-
-const readableStream = fs.createReadStream(path.join(__dirname, 'template.html'), 'utf-8');
-console.log('start createStr');
-readableStream.on('data', (data) => {
-  let str = data;
-  const regex = /{{(.*?)}}/g;
-  const matches = [];
-  let match;
-  while ((match = regex.exec(str))) {
-    matches.push(match[1]);
-  }
-  console.log(matches);
-
-  if (matches.length > 0) {
-    fs.readdir(path.join(__dirname, 'components'), {withFileTypes: true}, (err, files) => {
-      if (err) console.log('error');
-      indexContent = str;
-      files.forEach((file, index) => {
-        console.log(file.name);
-        const point = /[^\w\s]/g;
-        const fileName = file.name.slice(0, file.name.search(point));
-        if (matches.includes(fileName)) {
-
-          const stream = fs.createReadStream(path.join(__dirname, 'components', file.name), 'utf-8');
-          stream.on('data', (data) => {
-            indexContent = indexContent.replace(`{{${fileName}}}`, data);
-            // console.log(indexContent)
-            if (index >= files.length-1) {
-              fs.appendFile(path.join(__dirname, 'project-dist', 'index.html'), indexContent, (err) => {
-                if (err) console.log('error');
-              });
-            }
-          });
-
-        }
-      });
-
-    });
-  }
-
 });
