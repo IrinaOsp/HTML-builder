@@ -12,7 +12,7 @@ const {
 
 const rl = readline.createInterface({ input, output });
 
-rl.write('Hi there! Enter your text: ');
+rl.write('Hi there! Enter your text: \n');
 rl.on('line', (text) => {
   if (text === 'exit') {
     rl.close();
